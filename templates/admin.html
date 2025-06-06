@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Dialize Betim</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f7f9fc;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2d3748;
+            font-size: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table th {
+            background: #f8fafc;
+            color: #4a5568;
+            font-weight: 600;
+        }
+
+        .data-table tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .btn {
+            background: #4299e1;
+            color: #fff;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #3182ce;
+        }
+
+        .export-btn {
+            background: #48bb78;
+        }
+
+        .export-btn:hover {
+            background: #38a169;
+        }
+
+        .tab-container {
+            margin-bottom: 30px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: #e2e8f0;
+            color: #4a5568;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: #4299e1;
+            color: #fff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .rating-stars {
+            color: #ecc94b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Painel Administrativo - Dialize Betim</h1>
+            <div>
+                <button class="btn export-btn" onclick="exportToExcel()">Exportar Excel</button>
+                <button class="btn" onclick="logout()">Sair</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalEvaluations">0</div>
+                <div class="stat-label">Total de Avaliações</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalPatients">0</div>
+                <div class="stat-label">Total de Pacientes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="averageRating">0.0</div>
+                <div class="stat-label">Média Geral</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="lastEvaluation">-</div>
+                <div class="stat-label">Última Avaliação</div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-container">
+                <h3>Avaliações por Categoria</h3>
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Evolução das Avaliações</h3>
+                <canvas id="timeChart"></canvas>
+            </div>
+        </div>
+
+        <div class="tab-container">
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="showTab('evaluations')">Avaliações</button>
+                <button class="tab-btn" onclick="showTab('patients')">Pacientes</button>
+            </div>
+
+            <div id="evaluationsTab" class="tab-content active">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Paciente</th>
+                            <th>Sessão</th>
+                            <th>Médico</th>
+                            <th>Enfermeiro</th>
+                            <th>Técnico</th>
+                            <th>Comentários</th>
+                        </tr>
+                    </thead>
+                    <tbody id="evaluationsTableBody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="patientsTab" class="tab-content">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Telefone</th>
+                            <th>Data de Cadastro</th>
+                            <th>Total de Avaliações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="patientsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados do backend
+        const evaluations = {{ evaluations|tojson|safe }};
+        const users = {{ users|tojson|safe }};
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            createCharts();
+            populateTables();
+        });
+
+        function updateStats() {
+            document.getElementById('totalEvaluations').textContent = evaluations.length;
+            document.getElementById('totalPatients').textContent = users.length;
+            
+            if (evaluations.length > 0) {
+                const avgRating = calculateAverageRating();
+                document.getElementById('averageRating').textContent = avgRating.toFixed(1);
+                
+                const lastEval = evaluations[evaluations.length - 1];
+                document.getElementById('lastEvaluation').textContent = 
+                    new Date(lastEval.session_date).toLocaleDateString('pt-BR');
+            }
+        }
+
+        function calculateAverageRating() {
+            let total = 0;
+            let count = 0;
+            
+            evaluations.forEach(eval => {
+                Object.values(eval.ratings).forEach(rating => {
+                    if (rating) {
+                        total += rating;
+                        count++;
+                    }
+                });
+            });
+            
+            return count > 0 ? total / count : 0;
+        }
+
+        function createCharts() {
+            createCategoryChart();
+            createTimeChart();
+        }
+
+        function createCategoryChart() {
+            const categories = {
+                'session': 'Sessão Geral',
+                'doctor': 'Médico',
+                'nurse': 'Enfermeiro',
+                'technician': 'Técnico',
+                'food': 'Alimentação',
+                'cleaning': 'Limpeza',
+                'transport': 'Transporte'
+            };
+            
+            const data = Object.keys(categories).map(key => {
+                const ratings = evaluations.map(eval => eval.ratings[key] || 0);
+                return ratings.length > 0 ? 
+                    ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
+            });
+            
+            new Chart(document.getElementById('categoryChart').getContext('2d'), {
+                type: 'radar',
+                data: {
+                    labels: Object.values(categories),
+                    datasets: [{
+                        label: 'Média por Categoria',
+                        data: data,
+                        backgroundColor: 'rgba(66, 153, 225, 0.2)',
+                        borderColor: 'rgba(66, 153, 225, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    }
+                }
+            });
+        }
+
+        function createTimeChart() {
+            const sortedEvals = [...evaluations].sort((a, b) => 
+                new Date(a.session_date) - new Date(b.session_date));
+            
+            const dates = sortedEvals.map(eval => 
+                new Date(eval.session_date).toLocaleDateString('pt-BR'));
+            
+            const ratings = sortedEvals.map(eval => {
+                const values = Object.values(eval.ratings);
+                return values.reduce((a, b) => a + b, 0) / values.length;
+            });
+            
+            new Chart(document.getElementById('timeChart').getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Média por Sessão',
+                        data: ratings,
+                        borderColor: 'rgba(72, 187, 120, 1)',
+                        backgroundColor: 'rgba(72, 187, 120, 0.2)',
+                        fill: true
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 5
+                        }
+                    }
+                }
+            });
+        }
+
+        function populateTables() {
+            populateEvaluationsTable();
+            populatePatientsTable();
+        }
+
+        function populateEvaluationsTable() {
+            const tbody = document.getElementById('evaluationsTableBody');
+            tbody.innerHTML = '';
+            
+            evaluations.forEach(eval => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${new Date(eval.session_date).toLocaleDateString('pt-BR')}</td>
+                    <td>${eval.patient_name}</td>
+                    <td>${createStars(eval.ratings.session)}</td>
+                    <td>${createStars(eval.ratings.doctor)}</td>
+                    <td>${createStars(eval.ratings.nurse)}</td>
+                    <td>${createStars(eval.ratings.technician)}</td>
+                    <td>${eval.comments || '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function populatePatientsTable() {
+            const tbody = document.getElementById('patientsTableBody');
+            tbody.innerHTML = '';
+            
+            users.forEach(user => {
+                const userEvals = evaluations.filter(e => e.patient_id === user.id);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.name}</td>
+                    <td>${user.email || '-'}</td>
+                    <td>${user.phone || '-'}</td>
+                    <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td>${userEvals.length}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function createStars(rating) {
+            return `<span class="rating-stars">${'★'.repeat(rating)}${'☆'.repeat(5-rating)}</span>`;
+        }
+
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            const activeBtn = document.querySelector(`.tab-btn[onclick="showTab('${tabName}')"]`);
+            const activeContent = document.getElementById(`${tabName}Tab`);
+            
+            if (activeBtn && activeContent) {
+                activeBtn.classList.add('active');
+                activeContent.classList.add('active');
+            }
+        }
+
+        function exportToExcel() {
+            // Implementar exportação para Excel
+            alert('Função de exportação será implementada em breve!');
+        }
+
+        function logout() {
+            window.location.href = '/logout';
+        }
+    </script>
+</body>
+</html>
